@@ -13,11 +13,11 @@
   "author": "TheMas3212",
   "license": "MIT",
   "devDependencies": {
-    "@stylistic/eslint-plugin-ts": "^1.6.3",
+    "@stylistic/eslint-plugin-ts": "^2.10.1",
     "@types/node": "^20.9.0",
-    "@typescript-eslint/eslint-plugin": "^7.1.1",
-    "@typescript-eslint/parser": "^7.1.1",
-    "eslint": "^8.53.0",
-    "typescript": "^5.2.2"
+    "@typescript-eslint/eslint-plugin": "^8.14.0",
+    "@typescript-eslint/parser": "^8.14.0",
+    "eslint": "^9.14.0",
+    "typescript": "^5.6.3"
   }
 }
