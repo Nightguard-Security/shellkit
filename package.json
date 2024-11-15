@@ -1,0 +1,23 @@
+{
+  "name": "@themas3212/shellkit",
+  "version": "0.0.1",
+  "description": "",
+  "private": true,
+  "main": "dist/index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "prestart": "npm run-script build",
+    "build": "tsc",
+    "start": "node --enable-source-maps ."
+  },
+  "author": "TheMas3212",
+  "license": "MIT",
+  "devDependencies": {
+    "@stylistic/eslint-plugin-ts": "^1.6.3",
+    "@types/node": "^20.9.0",
+    "@typescript-eslint/eslint-plugin": "^7.1.1",
+    "@typescript-eslint/parser": "^7.1.1",
+    "eslint": "^8.53.0",
+    "typescript": "^5.2.2"
+  }
+}
