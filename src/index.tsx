@@ -1,4 +1,5 @@
-import { catcher } from "./catcher";
+import React from 'react';
+import { catcher } from "./modules/catcher.js";
 
 if (process.env.TMUX === undefined) {
   console.error("Need to be runnning in TMUX");
