@@ -91,6 +91,6 @@ export function catcher(shellPort: number, shellHost: string, ipcPort: number) {
 // Check if the file was imported or run directly.
 if (require.main === module) {
   // Directly run from CLI.  Collect parameters and start catcher.
-  const [shellPort, shellHost, ipcPort]= process.argv.slice(2,5)
+  const [shellPort, shellHost, ipcPort]= process.argv.slice(2,5);
   catcher(Number(shellPort), shellHost, Number(ipcPort));
 }
