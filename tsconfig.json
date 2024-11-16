@@ -1,6 +1,8 @@
 {
     "compilerOptions": {
-      "module": "commonjs",
+			"jsx": "react",
+      "module": "NodeNext",
+      "moduleResolution": "nodenext",
       "removeComments": true,
       "preserveConstEnums": true,
       "sourceMap": true,

@@ -4,11 +4,14 @@
   "description": "",
   "private": true,
   "main": "dist/index.js",
+  "type": "module",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "prestart": "npm run-script build",
+    "prebuild": "rm -rf dist",
     "build": "tsc",
-    "start": "node --enable-source-maps ."
+    "prestart": "npm run-script build",
+    "start": "node --enable-source-maps .",
+    "watch": "nodemon -e ts,tsx --watch src --exec \"npm run start\""
   },
   "author": "TheMas3212",
   "license": "MIT",
@@ -18,11 +21,12 @@
   },
   "devDependencies": {
     "@stylistic/eslint-plugin-ts": "^2.10.1",
-    "@types/ink": "^2.0.3",
     "@types/node": "^20.9.0",
+    "@types/react": "^18.3.12",
     "@typescript-eslint/eslint-plugin": "^8.14.0",
     "@typescript-eslint/parser": "^8.14.0",
     "eslint": "^9.14.0",
+    "nodemon": "^3.1.7",
     "typescript": "^5.6.3"
   }
 }
