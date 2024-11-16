@@ -1,4 +1,4 @@
-import { catcher } from "./catcher";
+import { catcher } from "./modules/catcher";
 
 if (process.env.TMUX === undefined) {
   console.error("Need to be runnning in TMUX");
