@@ -43,7 +43,7 @@ export function catcher(shellHost: string, shellPort: number) {
   // const clients = new Map<string, Client>();
   const IPC_SOCKET = "/shellkit/" + randomUUID();
   const MARKER = Buffer.from("NODE_REV");
-  const node = process.argv[0];
+  const node = process.execPath;
   const connectionTable = new ConnectionTable({shellHost, shellPort});
 
   const shellServer = createServer({
