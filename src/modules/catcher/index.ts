@@ -1,6 +1,7 @@
 import { spawn } from "node:child_process";
 import { createServer, Socket } from "node:net";
 import { randomUUID } from "node:crypto";
+import { ConnectionTable } from "./connectionTable";
 
 const wrapper = function() {
   const { createConnection } = require("node:net");
@@ -28,10 +29,13 @@ const wrapper = function() {
 };
 const WRAPPER_CODE = wrapper.toString().slice(13,-1);
 
-export function catcher(shellPort: number, shellHost: string, ipcPort: number) {
+export function catcher(shellHost: string, shellPort: number, ipcPort: number) {
   const MARKER = Buffer.from("NODE_REV");
   const idMap = new Map<string, Socket>();
   const node = process.argv[0];
+  const connections = new Map<string, string | undefined>();
+  const connectionTable = new ConnectionTable({shellHost, shellPort, ipcPort});
+
   const shellServer = createServer({
     keepAlive: true
   });
@@ -58,7 +62,8 @@ export function catcher(shellPort: number, shellHost: string, ipcPort: number) {
         const uuid = socket.read(36).toString("utf8");
         const pair = idMap.get(uuid);
         if (pair) {
-          console.log(`New Connection ${uuid} from ${pair.remoteAddress}`);
+          connections.set(uuid, pair.remoteAddress);
+          renderConnectionTable();
           idMap.delete(uuid);
           pair.pipe(socket);
           socket.pipe(pair);
@@ -67,7 +72,8 @@ export function catcher(shellPort: number, shellHost: string, ipcPort: number) {
             pair.end();
           });
           pair.on("end", () => {
-            console.log(`Connection ${uuid} from ${pair.remoteAddress} closed`);
+            connections.delete(uuid);
+            renderConnectionTable();
           });
           pair.on("error", () => {
             socket.end();
@@ -82,15 +88,19 @@ export function catcher(shellPort: number, shellHost: string, ipcPort: number) {
     }
   });
 
+  const renderConnectionTable = () => {
+    connectionTable.clear();
+    connectionTable.render(connections);
+  }
+
   shellServer.listen(shellPort, shellHost);
   ipcServer.listen(ipcPort, "127.0.0.1");
-  console.log(`Listening for Reverse Shells on ${shellHost}:${shellPort}`);
-  console.log(`IPC on ${ipcPort}`);
+  renderConnectionTable();
 }
 
 // Check if the file was imported or run directly.
 if (require.main === module) {
   // Directly run from CLI.  Collect parameters and start catcher.
   const [shellPort, shellHost, ipcPort]= process.argv.slice(2,5);
-  catcher(Number(shellPort), shellHost, Number(ipcPort));
+  catcher(shellHost, Number(shellPort), Number(ipcPort));
 }
