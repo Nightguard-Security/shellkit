@@ -2,9 +2,8 @@ import { terminal } from "terminal-kit";
 import { padContents } from "./utils";
 
 type ConnectionTableConfig = {
-  shellHost: string
-  shellPort: number
-  ipcPort: number
+  shellHost: string;
+  shellPort: number;
 };
 
 export class ConnectionTable {

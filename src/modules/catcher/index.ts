@@ -3,14 +3,23 @@ import { createServer, Socket } from "node:net";
 import { randomUUID } from "node:crypto";
 import { ConnectionTable } from "./connectionTable";
 
+type Connection = {
+  id: string; // uuid
+  socket: Socket;
+};
+// type Client = {
+//   id: string; // uuid
+//   target: string; // uuid
+//   socket: Socket;
+// };
+
 const wrapper = function() {
   const { createConnection } = require("node:net");
   const UUID = Buffer.from(process.argv[2]);
   const MARKER = Buffer.from("NODE_REV");
-  const ipcPort = Number(process.argv[1] ?? "2424");
+  const IPC_SOCKET = process.argv[1];
   const socket = createConnection({
-    port: ipcPort,
-    host: "127.0.0.1",
+    path: "\0" + IPC_SOCKET,
     keepAlive: true
   });
   socket.on("ready", () => {
@@ -29,20 +38,21 @@ const wrapper = function() {
 };
 const WRAPPER_CODE = wrapper.toString().slice(13,-1);
 
-export function catcher(shellHost: string, shellPort: number, ipcPort: number) {
+export function catcher(shellHost: string, shellPort: number) {
+  const connections = new Map<string, Connection>();
+  // const clients = new Map<string, Client>();
+  const IPC_SOCKET = "/shellkit/" + randomUUID();
   const MARKER = Buffer.from("NODE_REV");
-  const idMap = new Map<string, Socket>();
   const node = process.argv[0];
-  const connections = new Map<string, string | undefined>();
-  const connectionTable = new ConnectionTable({shellHost, shellPort, ipcPort});
+  const connectionTable = new ConnectionTable({shellHost, shellPort});
 
   const shellServer = createServer({
     keepAlive: true
   });
   shellServer.on("connection", (socket) => {
-    const uuid = randomUUID();
-    idMap.set(uuid, socket);
-    spawn("tmux", ["split-window", `exec ${node} -e '${WRAPPER_CODE}' ${ipcPort} ${uuid}`]);
+    const id = randomUUID();
+    connections.set(id, { socket, id });
+    spawn("tmux", ["split-window", `exec ${node} -e '${WRAPPER_CODE}' ${IPC_SOCKET} ${id}`]);
   });
   const ipcServer = createServer({
     keepAlive: true
@@ -59,25 +69,23 @@ export function catcher(shellHost: string, shellPort: number, ipcPort: number) {
     }
     function handle(mark: Buffer) {
       if (mark.equals(MARKER)) {
-        const uuid = socket.read(36).toString("utf8");
-        const pair = idMap.get(uuid);
+        const id = socket.read(36).toString("utf8");
+        const pair = connections.get(id);
         if (pair) {
-          connections.set(uuid, pair.remoteAddress);
           renderConnectionTable();
-          idMap.delete(uuid);
-          pair.pipe(socket);
-          socket.pipe(pair);
+          pair.socket.pipe(socket);
+          socket.pipe(pair.socket);
           socket.on("error", () => {
             socket.end();
-            pair.end();
+            pair.socket.end();
           });
-          pair.on("end", () => {
-            connections.delete(uuid);
+          pair.socket.on("end", () => {
+            connections.delete(id);
             renderConnectionTable();
           });
-          pair.on("error", () => {
+          pair.socket.on("error", () => {
             socket.end();
-            pair.end();
+            pair.socket.end();
           });
         } else {
           socket.end();
@@ -90,17 +98,19 @@ export function catcher(shellHost: string, shellPort: number, ipcPort: number) {
 
   const renderConnectionTable = () => {
     connectionTable.clear();
-    connectionTable.render(connections);
-  }
+    connectionTable.render(new Map(Array.from(connections.entries()).map(([id, connection]) => {
+      return [id, connection.socket.remoteAddress];
+    })));
+  };
 
   shellServer.listen(shellPort, shellHost);
-  ipcServer.listen(ipcPort, "127.0.0.1");
+  ipcServer.listen("\0" + IPC_SOCKET);
   renderConnectionTable();
 }
 
 // Check if the file was imported or run directly.
 if (require.main === module) {
   // Directly run from CLI.  Collect parameters and start catcher.
-  const [shellPort, shellHost, ipcPort]= process.argv.slice(2,5);
-  catcher(shellHost, Number(shellPort), Number(ipcPort));
+  const [shellPort, shellHost]= process.argv.slice(2,4);
+  catcher(shellHost, Number(shellPort));
 }
