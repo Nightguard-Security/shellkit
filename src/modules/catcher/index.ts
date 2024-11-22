@@ -1,8 +1,18 @@
+#!/usr/bin/env node
 import { spawn } from "node:child_process";
 import { createServer, Socket } from "node:net";
 import { randomUUID } from "node:crypto";
+import yargs from "yargs/yargs";
 import { ConnectionTable } from "./connectionTable";
 
+interface CommandLineArguments {
+  [x: string]: unknown;
+  borderless: boolean | undefined;
+  _: (string | number)[];
+}
+type CatcherOptions = {
+  borderless: boolean
+};
 type Connection = {
   id: string; // uuid
   socket: Socket;
@@ -38,13 +48,13 @@ const wrapper = function() {
 };
 const WRAPPER_CODE = wrapper.toString().slice(13,-1);
 
-export function catcher(shellHost: string, shellPort: number) {
+export function catcher(shellHost: string, shellPort: number, options: CatcherOptions) {
   const connections = new Map<string, Connection>();
   // const clients = new Map<string, Client>();
   const IPC_SOCKET = "/shellkit/" + randomUUID();
   const MARKER = Buffer.from("NODE_REV");
   const node = process.execPath;
-  const connectionTable = new ConnectionTable({shellHost, shellPort});
+  const connectionTable = new ConnectionTable({shellHost, shellPort, borderless: options.borderless ?? true});
 
   const shellServer = createServer({
     keepAlive: true
@@ -110,7 +120,14 @@ export function catcher(shellHost: string, shellPort: number) {
 
 // Check if the file was imported or run directly.
 if (require.main === module) {
-  // Directly run from CLI.  Collect parameters and start catcher.
-  const [shellPort, shellHost]= process.argv.slice(2,4);
-  catcher(shellHost, Number(shellPort));
+  
+  const {_: [shellHost, shellPort] , borderless}: CommandLineArguments = yargs(process.argv.slice(2))
+    .option("borderless", {
+      alias: "b",
+      type: "boolean",
+      description: "Romove borders on display"
+    })
+    .parseSync();
+
+  catcher(String(shellHost), Number(shellPort), { borderless: !!borderless });
 }
