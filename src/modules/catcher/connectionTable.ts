@@ -4,6 +4,7 @@ import { padContents } from "./utils";
 type ConnectionTableConfig = {
   shellHost: string;
   shellPort: number;
+  borderless: boolean;
 };
 
 export class ConnectionTable {
@@ -27,7 +28,7 @@ export class ConnectionTable {
         ([uuid, remoteAddress]) => [padContents(padding,uuid), remoteAddress ?? ""]
       )
     ], {
-      hasBorder: true,
+      hasBorder: !this.config.borderless,
       fit: true
     });
   };

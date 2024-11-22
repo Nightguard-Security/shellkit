@@ -5,7 +5,7 @@ if (process.env.TMUX === undefined) {
   process.exit(1);
 }
 
-const shellHost = process.argv[3] ?? "127.0.0.1";
+const shellHost = process.argv[3] ?? "0.0.0.0";
 const shellPort = Number(process.argv[2] ?? "4242");
 
-catcher(shellHost, shellPort);
+catcher(shellHost, shellPort, {borderless: false});
