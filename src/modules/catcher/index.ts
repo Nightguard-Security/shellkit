@@ -4,6 +4,8 @@ import { createServer, Socket } from "node:net";
 import { randomUUID } from "node:crypto";
 import yargs from "yargs/yargs";
 import { ConnectionTable } from "./connectionTable";
+import type { Readable } from "node:stream";
+import { WRAPPER_PATH } from "./wrapper";
 
 interface CommandLineArguments {
   [x: string]: unknown;
@@ -23,30 +25,29 @@ type Connection = {
 //   socket: Socket;
 // };
 
-const wrapper = function() {
-  const { createConnection } = require("node:net");
-  const UUID = Buffer.from(process.argv[2]);
-  const MARKER = Buffer.from("NODE_REV");
-  const IPC_SOCKET = process.argv[1];
-  const socket = createConnection({
-    path: "\0" + IPC_SOCKET,
-    keepAlive: true
+function readUntilByte(target: Buffer, stream: Readable): Promise<Buffer> {
+  return new Promise((resolve) => {
+    const bytes: Buffer[] = [];
+    let byte = Buffer.alloc(0);
+    function readUntilEmpty() {
+      while (true) {
+        byte = stream.read(1);
+        if (byte === null) {
+          return stream.once("readable", readUntilEmpty);
+        }
+        if (byte.equals(target)) {
+          return resolve(Buffer.concat(bytes));
+        }
+        bytes.push(byte);
+      }
+    }
+    readUntilEmpty();
   });
-  socket.on("ready", () => {
-    socket.write(Buffer.concat([MARKER, UUID]));
-    process.stdin.setRawMode(true);
-    socket.pipe(process.stdout);
-    process.stdin.pipe(socket);
-  });
-  socket.on("close", () => {
-    process.exit();
-  });
-  process.stdin.on("end", () => {
-    socket.end();
-    process.exit();
-  });
-};
-const WRAPPER_CODE = wrapper.toString().slice(13,-1);
+}
+const NEWLINE = Buffer.from("\n");
+function readUntilLine(stream: Readable) {
+  return readUntilByte(NEWLINE, stream);
+}
 
 export function catcher(shellHost: string, shellPort: number, options: CatcherOptions) {
   const connections = new Map<string, Connection>();
@@ -55,14 +56,25 @@ export function catcher(shellHost: string, shellPort: number, options: CatcherOp
   const MARKER = Buffer.from("NODE_REV");
   const node = process.execPath;
   const connectionTable = new ConnectionTable({shellHost, shellPort, borderless: options.borderless ?? true});
-
   const shellServer = createServer({
     keepAlive: true
   });
   shellServer.on("connection", (socket) => {
     const id = randomUUID();
     connections.set(id, { socket, id });
-    spawn("tmux", ["split-window", `exec ${node} -e '${WRAPPER_CODE}' ${IPC_SOCKET} ${id}`]);
+    socket.write("tty\n");
+    function checkReady() {
+      readUntilLine(socket).then(buffer => {
+        if (buffer.toString("utf8").includes("/dev/pts")) {
+          spawn("tmux", ["split-window", `exec ${node} ${WRAPPER_PATH} ${IPC_SOCKET} ${id} TTY`]);
+        } else if (buffer.toString("utf8").includes("not a tty")) {
+          spawn("tmux", ["split-window", `exec ${node} ${WRAPPER_PATH} ${IPC_SOCKET} ${id} NOTTY`]);
+        } else {
+          checkReady();
+        }
+      });
+    }
+    checkReady();
   });
   const ipcServer = createServer({
     keepAlive: true
